@@ -6,6 +6,15 @@ from typing import Dict, Iterable, Optional, Tuple
 import numpy as np
 from FourRooms import FourRooms
 
+# For 20 epochs
+# Scenario: (LearningRate, DiscountRate)
+DEFAULT_PARAMS = {
+    "simple": (0.15, 0.2),
+    "multi": (0.15, 0.5),
+    "rgb": (0.45, 0.65)
+}
+
+
 class FourRoomsAgent(object):
     """A RL Agent designed to find packages distributed over a map with boundaries."""
 
@@ -97,6 +106,24 @@ class FourRoomsAgent(object):
         x, y = self.env.getPosition()
         n = self.env.getPackagesRemaining()
         return FourRoomsAgent.State(x=x, y=y, numPackagesRemaining=n)
+
+
+def test(scenario: str, **kwargs) -> None:
+    """Test a range of parameters (LR, DR) to find the best combination."""
+    best = -float("inf")
+    bestparams = (-1, -1)
+    epochs = kwargs.get("epochs", None)
+    print(f"Testing parameters with {epochs} epochs")
+    for lr in np.arange(0.05, 0.95, 0.05):
+        kwargs["learning_rate"] = lr
+        for dr in np.arange(0.05, 0.95, 0.05):
+            kwargs["discount_rate"] = dr
+            fitness = run(scenario, **kwargs)[1]
+            if fitness > best:
+                print(f"LR: {lr:.3f}, DR: {dr:.3f} ({fitness:.0f}%)")
+                best = fitness
+                bestparams = (lr, dr)
+    print(f"Best LR: {bestparams[0]}, DR: {bestparams[1]}")
 
 
 def run(scenario: str,
