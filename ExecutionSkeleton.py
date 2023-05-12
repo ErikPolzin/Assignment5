@@ -99,33 +99,66 @@ class FourRoomsAgent(object):
         return FourRoomsAgent.State(x=x, y=y, numPackagesRemaining=n)
 
 
+def run(scenario: str,
+        stochastic: bool = False,
+        epochs: int = 20,
+        learning_rate: Optional[float] = None,
+        discount_rate: Optional[float] = None,
+        feedback: bool = False,
+        max_actions: int = 10000) -> Tuple[FourRooms, float]:
+    """Run a given scenario and return the average moves before picking up all packages."""
 
     # Create FourRooms Object
-    fourRoomsObj = FourRooms('simple')
+    fourRoomsObj = FourRooms(scenario, stochastic=stochastic)
+    agent = FourRoomsAgent(fourRoomsObj, learning_rate, discount_rate)
+    fitness = 0.0
 
-    # This will try to draw a zero
-    actSeq = [FourRooms.LEFT, FourRooms.LEFT, FourRooms.LEFT,
-              FourRooms.UP, FourRooms.UP, FourRooms.UP,
-              FourRooms.RIGHT, FourRooms.RIGHT, FourRooms.RIGHT,
-              FourRooms.DOWN, FourRooms.DOWN, FourRooms.DOWN]
+    for epoch in range(epochs):
+        i = 0
+        fourRoomsObj.newEpoch()
+        N = fourRoomsObj.getPackagesRemaining()
+        # Cap the number of moves at max_actions, in case of infinite loops
+        while not fourRoomsObj.isTerminal() and i < max_actions:
+            prevState = agent.state()
+            nextAction = agent.getBestAction()
+            reward = agent.takeAction(nextAction)
+            agent.updateV(prevState, nextAction, reward)
+            i += 1
+        n = N - fourRoomsObj.getPackagesRemaining()
+        fitness += 0.2*(1-i/max_actions)+0.8*(n/N)*100
+        if feedback:
+            print(f"Found {n} packages in {i} moves")
+    return fourRoomsObj, fitness/epochs
 
-    aTypes = ['UP', 'DOWN', 'LEFT', 'RIGHT']
-    gTypes = ['EMPTY', 'RED', 'GREEN', 'BLUE']
 
-    print('Agent starts at: {0}'.format(fourRoomsObj.getPosition()))
+def main():
+    parser = argparse.ArgumentParser(
+        prog='ExecutionSkeleton',
+        description='Trains the FourRooms Agent in a given scenario')
+    parser.add_argument('scenario')
+    parser.add_argument('-stochastic', action='store_true')
+    parser.add_argument('-learning-rate', default=None, type=float)
+    parser.add_argument('-discount-rate', default=None, type=float)
+    parser.add_argument('-epochs', default=20, type=int)
+    parser.add_argument('-test', action='store_true')
+    parser.add_argument('-save', default=None, type=str)
 
-    for act in actSeq:
-        gridType, newPos, packagesRemaining, isTerminal = fourRoomsObj.takeAction(act)
-
-        print("Agent took {0} action and moved to {1} of type {2}".format (aTypes[act], newPos, gTypes[gridType]))
-
-        if isTerminal:
-            break
-
-    # Don't forget to call newEpoch when you start a new simulation run
-
-    # Show Path
-    fourRoomsObj.showPath(-1)
+    args = parser.parse_args()
+    kwargs = {
+        "stochastic": args.stochastic,
+        "epochs": args.epochs,
+        "learning_rate": args.learning_rate,
+        "discount_rate": args.discount_rate
+    }
+    if args.test:
+        test(args.scenario, **kwargs)
+    else:
+        startTime = time.time()
+        fourRoomsObj, fitness = run(args.scenario, feedback=True, **kwargs)
+        elapsedTime = time.time() - startTime
+        print(f"Ran with average fitness: {fitness:.0f}%")
+        print(f"Execution time: {elapsedTime*1000:.0f}ms")
+        fourRoomsObj.showPath(-1, args.save)  # Show Path
 
 
 if __name__ == "__main__":
