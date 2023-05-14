@@ -4,6 +4,8 @@ import time
 from typing import Dict, Iterable, Optional, Tuple
 
 import numpy as np
+from matplotlib import pyplot
+from matplotlib.widgets import Button
 from FourRooms import FourRooms
 
 
@@ -180,14 +182,25 @@ def main():
     if args.test:
         test(args.scenario, args.stochastic, args.epochs)
     else:
-        startTime = time.time()
-        fourRoomsObj, fitness = run(
-            args.scenario, args.stochastic, args.epochs,
-            args.learning_rate, args.discount_rate, feedback=True)
-        elapsedTime = time.time() - startTime
-        print(f"Ran with average fitness: {fitness:.0f}%")
-        print(f"Execution time: {elapsedTime*1000:.0f}ms")
-        fourRoomsObj.showPath(-1, args.save)  # Show Path
+        fig, ax = pyplot.subplots()
+        fig.subplots_adjust(bottom=0.2)
+        pyplot.title(f"Scenario: {args.scenario}")
+        bax = fig.add_axes([0.7, 0.05, 0.2, 0.075])
+        button = Button(bax, 'Regenerate')
+
+        def generate(event=None):
+            pyplot.sca(ax)
+            startTime = time.time()
+            fourRoomsObj, fitness = run(
+                args.scenario, args.stochastic, args.epochs,
+                args.learning_rate, args.discount_rate, feedback=True)
+            elapsedTime = time.time() - startTime
+            print(f"Ran with average fitness: {fitness:.0f}%")
+            print(f"Execution time: {elapsedTime*1000:.0f}ms")
+            fourRoomsObj.showPath(-1, args.save)  # Show Path
+
+        button.on_clicked(generate)
+        generate()
 
 
 if __name__ == "__main__":
