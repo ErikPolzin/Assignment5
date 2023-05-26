@@ -28,10 +28,10 @@ class FourRoomsAgent(object):
         self.env = env
         self.learning_rate = learning_rate
         self.discount_rate = discount_rate
-        self.V: Dict[FourRoomsAgent.State, Dict[int, float]] = {}
+        self.Q: Dict[FourRoomsAgent.State, Dict[int, float]] = {}
         for s in self.allPossibleStates():
             # Initialize random values for each state-action pair
-            self.V[s] = {i: np.random.random() for i in range(4)}
+            self.Q[s] = {i: np.random.random() for i in range(4)}
 
     def allPossibleStates(self) -> Iterable[State]:
         """Iterate over every possible state that this agent can have.
@@ -49,7 +49,7 @@ class FourRoomsAgent(object):
         bestValue = -float("inf")
         bestAction = 0  # Default to UP
         # Look at the value of each action in the current state
-        for (a, v) in self.V[self.state()].items():
+        for (a, v) in self.Q[self.state()].items():
             if v > bestValue:
                 bestAction = a
                 bestValue = v
@@ -60,7 +60,7 @@ class FourRoomsAgent(object):
         result = self.env.takeAction(action)
         return self.reward(result[0], result[2])
 
-    def updateV(self, state: State, action: int, r: int) -> None:
+    def updateQ(self, state: State, action: int, r: int) -> None:
         """Update the value of taking a particular action from a certain state.
 
         Done according to the formula:
@@ -71,11 +71,11 @@ class FourRoomsAgent(object):
             # If the number of packages remaining is 0 after the next move,
             # the result is terminal. Can safely ignore
             return
-        v0 = self.V[state][action]
-        v1_max = max(self.V[s1].values())
+        q0 = self.Q[state][action]
+        q1_max = max(self.Q[s1].values())
         a = self.learning_rate
         gamma = self.discount_rate
-        self.V[state][action] = (1-a)*v0 + a*(r+gamma*v1_max)
+        self.Q[state][action] = (1-a)*q0 + a*(r+gamma*q1_max)
 
     def reward(self, grid_cell: int, num_packages: int) -> int:
         """Calculate reward of taking a given action."""
@@ -153,7 +153,7 @@ def run(scenario: str,
             prevState = agent.state()
             nextAction = agent.getBestAction()
             reward = agent.takeAction(nextAction)
-            agent.updateV(prevState, nextAction, reward)
+            agent.updateQ(prevState, nextAction, reward)
             i += 1
         n = N - room.getPackagesRemaining()
         pathScore = min(1, max(0, (1-i/max_actions)))
